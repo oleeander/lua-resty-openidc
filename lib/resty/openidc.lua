@@ -1190,6 +1190,28 @@ local function openidc_logout(opts, session)
   ngx.exit(ngx.OK)
 end
 
+-- revoke erroneous requested tokens when revoke_tokens_on_error is configured
+local function openidc_revoke_tokens_on_error(opts, session, json)
+  if opts.revoke_tokens_on_error then
+    if json == nil then
+      return
+    end
+
+    if session.data.refresh_token then
+      openidc_revoke_token(opts, "refresh_token", session.data.refresh_token)
+    end
+    if session.data.access_token then
+      openidc_revoke_token(opts, "access_token", session.data.access_token)
+    end
+    if json.refresh_token then
+      openidc_revoke_token(opts, "refresh_token", json.refresh_token)
+    end
+    if json.access_token then
+      openidc_revoke_token(opts, "access_token", json.access_token)
+    end
+  end
+end
+
 -- returns a valid access_token (eventually refreshing the token)
 local function openidc_access_token(opts, session, try_to_renew)
 
@@ -1227,6 +1249,7 @@ local function openidc_access_token(opts, session, try_to_renew)
   local json
   json, err = openidc.call_token_endpoint(opts, opts.discovery.token_endpoint, body, opts.token_endpoint_auth_method)
   if err then
+    openidc_revoke_tokens_on_error(opts, session, json)
     return nil, err
   end
   local id_token
@@ -1234,6 +1257,7 @@ local function openidc_access_token(opts, session, try_to_renew)
     id_token, err = openidc_load_and_validate_jwt_id_token(opts, json.id_token, session)
     if err then
       log(ERROR, "invalid id token, discarding tokens returned while refreshing")
+      openidc_revoke_tokens_on_error(opts, session, json)
       return nil, err
     end
   end

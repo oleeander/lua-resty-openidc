@@ -181,6 +181,10 @@ http {
              -- When revoke_tokens_on_logout is set to true a logout notifies the authorization server that previously obtained refresh and access tokens are no longer needed. This requires that revocation_endpoint is discoverable.
              -- If there is no revocation endpoint supplied or if there are errors on revocation the user will not be notified and the logout process continues normally.
 
+             --revoke_tokens_on_error = false
+             -- When set to true this plugin tries to revoke erroneously requested access and refresh tokens in some cases.
+             -- e.g. when a silent renewal takes place because renew_id_token_on_expiry is true and the id_token expired but renewal of the id_token is not possible using the refresh token.
+
              -- Optional : use outgoing proxy to the OpenID Connect provider endpoints with the proxy_opts table : 
              -- this requires lua-resty-http >= 0.12
              -- proxy_opts = {

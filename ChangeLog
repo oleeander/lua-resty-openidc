@@ -1,3 +1,7 @@
+10/22/2018
+- support revocation of erroneously requested access and refresh tokens
+  opts.revoke_tokens_on_error (default off)
+
 10/19/2018
 - release 1.7.0
 
