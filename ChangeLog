@@ -1,4 +1,6 @@
 10/22/2018
+- add option to enforce expiration time of id_tokens
+  opts.renew_id_token_on_expiry (default off), opts.id_token_expires_leeway
 - support revocation of erroneously requested access and refresh tokens
   opts.revoke_tokens_on_error (default off)
 

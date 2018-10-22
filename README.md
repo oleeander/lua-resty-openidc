@@ -158,6 +158,12 @@ http {
              --access_token_expires_leeway = 0
              --  Expiration leeway for access_token renewal. If this is set, renewal will happen access_token_expires_leeway seconds before the token expiration. This avoids errors in case the access_token just expires when arriving to the OAuth Resource Server.
 
+             --renew_id_token_on_expiry = false
+             -- When enabled this plugin enforces the expiration time of the id_token. An expired token will trigger a silent renewal attempt if a refresh token is available. If that does not renew the id_token, a new authorization request will take place.
+             -- Enabling this feature implicitly turns on storage of the access_token within the session.
+
+             --id_token_expires_leeway = 0
+             -- Expiration leeway for id_token renewal. If this is set, renewal will happen id_token_expires_leeway seconds before the id_token expiration. This avoids validation errors in case the id_token gets passed on to the application and just expires when arriving there.
              --force_reauthorize = false
              -- When force_reauthorize is set to true the authorization flow will be executed even if a token has been cached already
              --session_contents = {id_token=true}

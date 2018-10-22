@@ -77,6 +77,12 @@ local openidc = {
 openidc.__index = openidc
 
 local function store_in_session(opts, feature)
+  -- implicitly enable storage if access_tokens when
+  -- renew_id_token_on_expiry is enabled
+  if feature == 'access_token' and opts.renew_id_token_on_expiry then
+    return true
+  end
+
   -- We don't have a whitelist of features to enable
   if not opts.session_contents then
     return true
@@ -1084,6 +1090,12 @@ local function openidc_authorization_response(opts, session)
     end
   end
 
+  -- renewal of id_tokens requires storage of access_tokens in the session
+  if store_in_session(opts, 'id_token') or store_in_session(opts, 'enc_id_token') then
+    session.data.id_token_expiration = id_token.exp - 1
+        - (opts.id_token_expires_leeway or 0)
+  end
+
   -- save the session with the obtained id_token
   session:save()
 
@@ -1221,8 +1233,15 @@ local function openidc_access_token(opts, session, try_to_renew)
     return nil, err
   end
   local current_time = ngx.time()
-  if current_time < session.data.access_token_expiration then
-    return session.data.access_token, err
+  if session.data.id_token_expiration and opts.renew_id_token_on_expiry then
+    if (current_time < session.data.access_token_expiration) and
+      (current_time < session.data.id_token_expiration) then
+      return session.data.access_token, err
+    end
+  else
+    if current_time < session.data.access_token_expiration then
+      return session.data.access_token, err
+    end
   end
   if not try_to_renew then
     return nil, "token expired"
@@ -1260,7 +1279,12 @@ local function openidc_access_token(opts, session, try_to_renew)
       openidc_revoke_tokens_on_error(opts, session, json)
       return nil, err
     end
+  elseif opts.renew_id_token_on_expiry and current_time >= session.data.id_token_expiration then
+    log(DEBUG, "no id_token returned with refresh_token but renew_id_token_on_expiry is enabled. discarding tokens.")
+    openidc_revoke_tokens_on_error(opts, session, json)
+    return nil, err
   end
+
   log(DEBUG, "access_token refreshed: ", json.access_token, " updated refresh_token: ", json.refresh_token)
 
   session.data.access_token = json.access_token
@@ -1272,6 +1296,8 @@ local function openidc_access_token(opts, session, try_to_renew)
   if json.id_token and
       (store_in_session(opts, 'enc_id_token') or store_in_session(opts, 'id_token')) then
     log(DEBUG, "id_token refreshed: ", json.id_token)
+    session.data.id_token_expiration = id_token.exp - 1
+        - (opts.id_token_expires_leeway or 0)
     if store_in_session(opts, 'enc_id_token') then
       session.data.enc_id_token = json.id_token
     end
